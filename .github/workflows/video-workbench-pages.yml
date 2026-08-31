@@ -26,10 +26,12 @@ jobs:
         with:
           node-version: 22
       - run: corepack enable
-      - name: Install workspace dependencies
-        run: corepack yarn install --immutable
+      - name: Install demo dependencies
+        run: npm ci
+        working-directory: dsh-video-workbench
       - name: Build Pages artifact
-        run: corepack yarn workspace dsh-video-workbench build
+        run: npm run build
+        working-directory: dsh-video-workbench
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dsh-video-workbench/dist
