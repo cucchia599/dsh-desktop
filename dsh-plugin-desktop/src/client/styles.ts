@@ -43,6 +43,9 @@ body:is([data-dsh-desktop-mode="extended"], [data-dsh-desktop-mode="advanced"]) 
 .dshDesktopNoDrag, button, input, textarea, select, label, summary, a, [contenteditable="true"], [role="button"], [role="checkbox"], [role="dialog"], [role="menuitem"], [role="option"], [role="switch"], [role="tab"] { -webkit-app-region: no-drag !important; }
 [role="dialog"], [aria-modal="true"] { -webkit-app-region: no-drag !important; }
 html:has([aria-modal="true"]) .dshDesktopWindowsCaptionRow::before { -webkit-app-region: no-drag !important; }
+.dshProductVisualNavAction { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; padding: 0 10px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-fg-secondary); font: inherit; text-align: left; cursor: pointer; }
+.dshProductVisualNavAction:hover { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-fg-primary); }
+.dshProductVisualNavAction > span:first-child { color: #f59e0b; font-size: 15px; }
 @media (prefers-reduced-motion: reduce) {
   .dshDesktopFrame,
   .dshDesktopResizeHandle { transition: none !important; }

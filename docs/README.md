@@ -15,6 +15,7 @@
 | [用户指南](user-guide.md) | 安装、profile、模式、终端、插件命令和更新 |
 | [常见问题](faq.md) | 支持平台、内置环境、官方边界、数据、插件和更新的直接回答 |
 | [为什么做 Desktop](why-desktop.md) | Desktop 与官方 Harness 的边界，以及为什么坚持插件化 |
+| [多模态工具安装教程](dipsy-multimodal-install-guide.zh.md) | 视觉、音频、PDF/Office 多格式识别与生成工具的安装、链接和 Dipsy 执行清单 |
 
 ### 开发者与维护者文档
 

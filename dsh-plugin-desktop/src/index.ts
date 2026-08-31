@@ -54,6 +54,8 @@ import {
   handleDesktopSettingsRequest,
   handleDesktopTerminalOpenRequest,
 } from './desktop-settings-route.ts'
+import { registerVideoWorkbenchPageRoute, registerVideoWorkbenchRoutes } from './video-workbench-route.ts'
+import { registerProductVisualRoutes } from './product-visual-route.ts'
 import type {} from './desktop-settings-controller.ts'
 import { desktopBootRecoveryInjections } from './desktop-boot-recovery.ts'
 import type { DesktopShellMode } from './runtime.ts'
@@ -212,6 +214,18 @@ export function apply(ctx: Context, config: Config): void {
     },
   )
   const rendererOrigin = `http://127.0.0.1:${String(ctx.webServer.port)}`
+  ctx.effect(
+    () => registerVideoWorkbenchRoutes(ctx, rendererOrigin),
+    'dsh-plugin-desktop: video workbench provider routes',
+  )
+  ctx.effect(
+    () => registerVideoWorkbenchPageRoute(ctx),
+    'dsh-plugin-desktop: video workbench same-origin page',
+  )
+  ctx.effect(
+    () => registerProductVisualRoutes(ctx),
+    'dsh-plugin-desktop: product visual page and sidecar routes',
+  )
   ctx.on('webserver/index-inject', table => {
     table.push(...desktopBootRecoveryInjections())
   })

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import uuid
+import json
+import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -106,6 +109,43 @@ def prepare_tracking(db: Session, task_id: str) -> dict[str, Any]:
         return {"status": "blocked", "missing_inputs": ["sam2", "cutie"], "warnings": [str(exc)], "data": {}}
     task.input_json = {**(task.input_json or {}), "tracking_request": request}
     task.status = "queued"
+    db.commit()
+    return {"status": "ok", "data": _serialize(task)}
+
+
+def run_tracking(db: Session, task_id: str) -> dict[str, Any]:
+    task = db.get(Task, task_id)
+    if task is None or task.task_type != "video_replica":
+        return {"status": "blocked", "missing_inputs": ["task_id"], "data": {}}
+    selections = list((task.input_json or {}).get("selections") or [])
+    missing = validate_selections(selections)
+    if missing:
+        return {"status": "blocked", "missing_inputs": missing, "data": {}}
+    ingest = (task.input_json or {}).get("ingest") or {}
+    source = ((ingest.get("source") or {}).get("path") or "").strip()
+    person = next(item for item in selections if str(item.get("label", "")).lower() == "person")
+    python_bin = os.getenv("VIDEO_REPLICA_PYTHON", "").strip()
+    sam2_checkpoint = os.getenv("SAM2_CHECKPOINT", "").strip()
+    cutie_root = os.getenv("CUTIE_ROOT", "").strip()
+    cutie_weights = os.getenv("CUTIE_WEIGHTS", "").strip()
+    if not all([source, python_bin, sam2_checkpoint, cutie_root, cutie_weights]):
+        return {"status": "blocked", "missing_inputs": ["video_replica_runtime"], "data": {}, "warnings": ["配置 VIDEO_REPLICA_PYTHON、SAM2_CHECKPOINT、CUTIE_ROOT、CUTIE_WEIGHTS 后才能执行跟踪"]}
+    output_dir = (UPLOADS_DIR / "video-replica" / task_id / "tracking").resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    command = [python_bin, str(Path(__file__).resolve().parents[3] / "scripts/run_video_tracking.py"), "--source", source, "--output-dir", str(output_dir), "--x", str(person["x"]), "--y", str(person["y"]), "--sam2-checkpoint", sam2_checkpoint, "--cutie-root", cutie_root, "--cutie-weights", cutie_weights]
+    max_frames = os.getenv("VIDEO_REPLICA_MAX_FRAMES", "0").strip()
+    if max_frames:
+        command.extend(["--max-frames", max_frames])
+    try:
+        process = subprocess.run(command, capture_output=True, text=True, timeout=900, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"status": "failed", "missing_inputs": [], "warnings": [f"tracking runner failed: {exc}"], "data": {}}
+    if process.returncode != 0:
+        return {"status": "failed", "missing_inputs": [], "warnings": [process.stderr[-1000:] or "tracking runner exited with non-zero status"], "data": {}}
+    summary_path = output_dir / "tracking-summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    task.input_json = {**(task.input_json or {}), "tracking": summary}
+    task.status = "tracking"
     db.commit()
     return {"status": "ok", "data": _serialize(task)}
 

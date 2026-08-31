@@ -48,6 +48,12 @@ def tracking_preflight_api(task_id: str, db: Session = Depends(get_db)):
     return api_response(result["status"], "跟踪任务已排队" if result["status"] == "ok" else "跟踪能力未就绪", result.get("data"), "", result.get("missing_inputs"), result.get("warnings"), ["配置 SAM2_RUNNER 和 CUTIE_RUNNER 后重试"] if result["status"] != "ok" else [])
 
 
+@router.post("/api/video-generation/tasks/{task_id}/tracking/run")
+def tracking_run_api(task_id: str, db: Session = Depends(get_db)):
+    result = service.run_tracking(db, task_id)
+    return api_response(result["status"], "目标跟踪完成" if result["status"] == "ok" else "目标跟踪未完成", result.get("data"), "", result.get("missing_inputs"), result.get("warnings"))
+
+
 @router.get("/api/video-generation/tasks/{task_id}")
 def get_task_api(task_id: str, db: Session = Depends(get_db)):
     result = service.get_task(db, task_id)
