@@ -6,7 +6,6 @@ import {
   desktopWindowsPwshPath,
   type WindowsAclAdaptation,
 } from '../src/windows-pwsh-sandbox.ts'
-
 const RUN_AS_NODE = 'ELECTRON_RUN_AS_NODE'
 
 function shellSpec(env?: Record<string, string>): ShellExecSpec {
@@ -223,4 +222,5 @@ describe('Windows ACL runner trampoline', () => {
       'windows-acl-run: desktop trampoline: desktop trampoline received an unexpected ACL runner',
     ))
   })
+
 })
