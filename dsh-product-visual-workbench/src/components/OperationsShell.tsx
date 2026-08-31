@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { dshHomeUrl } from "../navigation";
 
 type Props = {
   activeView: string;
@@ -54,6 +55,7 @@ export function OperationsShell({ activeView, children, modelReady = false, onNa
         <header className="ops-topbar">
           <label className="ops-global-search"><span>⌕</span><input aria-label="搜索工作台" placeholder="搜索任务、素材、Agent 或日志" /></label>
           <div className="ops-top-actions">
+            <button className="ops-home-button" onClick={() => window.location.assign(dshHomeUrl(window.location.href))} type="button">返回 DSH 首页</button>
             <span className="ops-date">今日 · 实时数据</span>
             <button aria-label="刷新当前页面" className="ops-icon-button" onClick={onRefresh} type="button">↻</button>
             <span className={modelReady ? "ops-health ready" : "ops-health"}><i />{modelReady ? "服务就绪" : "需配置"}</span>
