@@ -63,6 +63,23 @@ const pipelineStages = ['资产预检', '动作重定向', '镜头合成', 'QA �
 
 const defaultPrompt = '保留人物身份与商品外观，按照动作参考视频的节奏完成一段 9:16 竖屏产品展示。镜头从中景推进到近景，手部动作自然，背景保持冷灰工业质感，最后停留 1 秒展示瓶身正面。'
 
+const apiBase = (import.meta as { env?: Record<string, string> }).env?.VITE_VIDEO_API_BASE
+  ?? new URLSearchParams(window.location.search).get('api')
+  ?? ''
+
+const publishedDemoVideoUrl = (import.meta as { env?: Record<string, string> }).env?.VITE_DEMO_VIDEO_URL
+  ?? new URLSearchParams(window.location.search).get('video')
+  ?? ''
+
+function apiUrl(path: string) {
+  return `${apiBase.replace(/\/$/, '')}${path}`
+}
+
+function resultUrl(value: unknown) {
+  if (typeof value !== 'string' || value.length === 0) return ''
+  return value.startsWith('http') ? value : apiUrl(value)
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
@@ -77,9 +94,10 @@ function App() {
   const [duration, setDuration] = useState('08')
   const [quality, setQuality] = useState('1080p')
   const [style, setStyle] = useState('写实广告')
-  const [generateStatus, setGenerateStatus] = useState<GenerateStatus>('idle')
+  const [generateStatus, setGenerateStatus] = useState<GenerateStatus>(publishedDemoVideoUrl ? 'done' : 'idle')
   const [activeStage, setActiveStage] = useState(-1)
-  const [resultVersion, setResultVersion] = useState(0)
+  const [resultVersion, setResultVersion] = useState(publishedDemoVideoUrl ? 1 : 0)
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState(publishedDemoVideoUrl)
   const [qaExpanded, setQaExpanded] = useState(true)
   const generationTimer = useRef<number | undefined>(undefined)
   const realJobTimer = useRef<number | undefined>(undefined)
@@ -114,9 +132,10 @@ function App() {
       }
       setGenerateStatus('running')
       setResultVersion(0)
+      setGeneratedVideoUrl('')
       setActiveStage(0)
       try {
-        const response = await fetch('/api/video-workbench/generate', {
+        const response = await fetch(apiUrl('/api/video-workbench/generate'), {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
@@ -131,12 +150,13 @@ function App() {
         if (!response.ok || !job.runId) throw new Error(job.error ?? '真实 Provider 请求失败')
         setActiveStage(1)
         realJobTimer.current = window.setInterval(async () => {
-          const statusResponse = await fetch(`/api/video-workbench/jobs/${encodeURIComponent(job.runId!)}`)
-          const status = await statusResponse.json() as { state?: string; output?: unknown; error?: string }
+          const statusResponse = await fetch(apiUrl(`/api/video-workbench/jobs/${encodeURIComponent(job.runId!)}`))
+          const status = await statusResponse.json() as { state?: string; output?: unknown; outputUrl?: string; error?: string }
           if (status.state === 'COMPLETED') {
             window.clearInterval(realJobTimer.current)
             setActiveStage(pipelineStages.length - 1)
             setGenerateStatus('done')
+            setGeneratedVideoUrl(resultUrl(status.outputUrl))
             setResultVersion((version) => version + 1)
           } else if (status.state === 'FAILED') {
             window.clearInterval(realJobTimer.current)
@@ -152,6 +172,7 @@ function App() {
     }
     setGenerateStatus('running')
     setResultVersion(0)
+    setGeneratedVideoUrl('')
     setActiveStage(0)
     let stage = 0
     generationTimer.current = window.setInterval(() => {
@@ -239,7 +260,7 @@ function App() {
               <div className="phone-frame">
                 <div className="phone-screen">
                   <div className="scan-lines" />
-                  {files.product?.url ? <img src={files.product.url} alt="产品预览" className="product-preview" /> : <div className="preview-object"><div className="object-glow" /><div className="bottle"><div className="bottle-cap" /><div className="bottle-body"><span>FORM<br /><em>02</em></span></div></div></div>}
+                  {generatedVideoUrl ? <video src={generatedVideoUrl} className="product-preview" controls playsInline /> : files.product?.url ? <img src={files.product.url} alt="产品预览" className="product-preview" /> : <div className="preview-object"><div className="object-glow" /><div className="bottle"><div className="bottle-cap" /><div className="bottle-body"><span>FORM<br /><em>02</em></span></div></div></div>}
                   <div className="preview-ui"><span>00:00:00:00</span><span className="preview-live"><i /> DEMO PREVIEW</span></div>
                   <div className="preview-caption">YOUR PRODUCT<br /><strong>IN MOTION</strong></div>
                 </div>
@@ -275,7 +296,7 @@ function App() {
       <footer className="bottom-console">
         <div className="settings-block"><div className="footer-label"><span className="section-index">06</span><b>生成设置</b></div><div className="setting-field"><label>时长</label><div className="select-like"><select value={duration} onChange={(event) => setDuration(event.target.value)}><option value="06">06 秒</option><option value="08">08 秒</option><option value="12">12 秒</option></select><Icon name="chevron" size={13} /></div></div><div className="setting-field"><label>质量</label><div className="select-like"><select value={quality} onChange={(event) => setQuality(event.target.value)}><option>720p</option><option>1080p</option><option>4K</option></select><Icon name="chevron" size={13} /></div></div><div className="setting-field"><label>风格</label><div className="select-like style-select"><select value={style} onChange={(event) => setStyle(event.target.value)}><option>写实广告</option><option>电影质感</option><option>低多边形</option></select><Icon name="chevron" size={13} /></div></div></div>
         <div className="generation-action"><div className="generation-metadata"><span><i className={hasCoreAssets ? 'green-dot' : 'orange-dot'} /> {hasCoreAssets ? '核心资产就绪' : '建议补齐人物 / 产品 / 动作'}</span><span><Icon name="clock" size={13} /> {realProvider ? '真实任务 · 轮询中' : '预计 30–60 秒'}</span></div><button className={`generate-button ${generateStatus === 'running' ? 'is-running' : ''}`} onClick={runGeneration} disabled={generateStatus === 'running'}><span className="generate-icon">{generateStatus === 'running' ? <span className="spinner" /> : generateStatus === 'done' ? <Icon name="check" size={18} /> : <Icon name="play" size={16} />}</span><span>{generateStatus === 'running' ? (realProvider ? '正在调用 LibTV…' : '正在生成 Demo…') : generateStatus === 'done' ? (realProvider ? '再次运行真实任务' : '再次运行 Demo') : generateStatus === 'failed' ? '任务失败，重试' : realProvider ? '生成真实视频' : '生成视频 Demo'}</span><small>{realProvider ? 'LOCAL DSH ROUTE / LIBTV' : 'MOCK / NO REAL MODEL'}</small></button></div>
-        <div className={`result-panel ${generateStatus === 'done' ? 'visible' : ''}`}><div className="result-thumb"><Icon name="play" size={15} /></div><div className="result-copy"><span>RESULT / {resultCode}</span><b>{generateStatus === 'done' ? 'Demo 视频已生成' : '暂无结果'}</b><small>{generateStatus === 'done' ? '本地状态演示 · 未产生真实模型文件' : '点击生成后查看 QA 回传'}</small></div><div className="qa-summary"><div className="qa-summary-head" onClick={() => setQaExpanded((expanded) => !expanded)}><span className="qa-pass"><Icon name="check" size={13} /> QA {generateStatus === 'done' ? 'PASS' : 'PENDING'}</span><Icon name="chevron" size={13} /></div>{qaExpanded && <div className="qa-details"><span>画幅 9:16 <b>PASS</b></span><span>资产一致 <b>{generateStatus === 'done' ? 'PASS' : '—'}</b></span></div>}</div><button className="download-button" disabled={generateStatus !== 'done'}><Icon name="download" size={15} /> 导出</button></div>
+        <div className={`result-panel ${generateStatus === 'done' ? 'visible' : ''}`}><div className="result-thumb">{generatedVideoUrl ? <video src={generatedVideoUrl} muted playsInline /> : <Icon name="play" size={15} />}</div><div className="result-copy"><span>RESULT / {generatedVideoUrl ? 'LIBTV' : resultCode}</span><b>{generateStatus === 'done' ? (generatedVideoUrl ? '真实视频已回传' : 'Demo 视频已生成') : '暂无结果'}</b><small>{generateStatus === 'done' ? (generatedVideoUrl ? '后端返回的视频地址已绑定预览区' : '本地状态演示 · 未产生真实模型文件') : '点击生成后查看 QA 回传'}</small></div><div className="qa-summary"><div className="qa-summary-head" onClick={() => setQaExpanded((expanded) => !expanded)}><span className="qa-pass"><Icon name="check" size={13} /> QA {generateStatus === 'done' ? 'PASS' : 'PENDING'}</span><Icon name="chevron" size={13} /></div>{qaExpanded && <div className="qa-details"><span>画幅 9:16 <b>PASS</b></span><span>资产一致 <b>{generateStatus === 'done' ? 'PASS' : '—'}</b></span></div>}</div><a className="download-button" aria-disabled={!generatedVideoUrl} href={generatedVideoUrl || undefined} download={generatedVideoUrl ? 'libtv-result.mp4' : undefined}><Icon name="download" size={15} /> 导出</a></div>
       </footer>
     </div>
   )
