@@ -7,4 +7,5 @@ test("video workbench binds completed backend output to the preview player", asy
   assert.match(source, /outputUrl/);
   assert.match(source, /<video/);
   assert.match(source, /resultUrl/);
+  assert.match(source, /controls preload="metadata" playsInline aria-label="生成视频预览"/);
 });

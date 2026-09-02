@@ -31,8 +31,6 @@ jobs:
         run: npm ci --workspaces=false
         working-directory: dsh-video-workbench
       - name: Build video workbench
-        env:
-          VITE_DEMO_VIDEO_URL: ./demo-output.mp4
         run: npm run build
         working-directory: dsh-video-workbench
       - name: Install product visual dependencies
