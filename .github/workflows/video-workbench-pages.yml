@@ -32,7 +32,7 @@ jobs:
         working-directory: dsh-video-workbench
       - name: Build video workbench
         env:
-          VITE_DEMO_VIDEO_URL: https://libtv-res.liblib.art/sd-gen-save-img/genius_playground/video/458f98c69f8b4e7fa78dca194a7ca35d/5439df1ef27c8a354d40a6fab6a591c5b9fd3ac8639b1f9f61a5b9f5f7f5925d.mp4
+          VITE_DEMO_VIDEO_URL: ./demo-output.mp4
         run: npm run build
         working-directory: dsh-video-workbench
       - name: Install product visual dependencies
